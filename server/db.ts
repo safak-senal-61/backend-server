@@ -1,6 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { neon } from '@neondatabase/serverless';
-import * as schema from "@shared/schema";
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Client } from 'pg';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -8,15 +7,21 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create neon client for serverless environment
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql);
+// Create PostgreSQL client
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Connect to the database
+client.connect();
+
+export const db = drizzle(client);
 
 // Test the database connection
 export async function testConnection() {
   try {
-    const result = await sql('SELECT 1 as test');
-    console.log('Database connected successfully:', result);
+    const result = await client.query('SELECT 1 as test');
+    console.log('Database connected successfully:', result.rows);
   } catch (error) {
     console.error('Database connection failed:', error);
   }

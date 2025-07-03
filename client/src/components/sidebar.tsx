@@ -88,6 +88,13 @@ export default function Sidebar({ isConnected, stats }: SidebarProps) {
             <List size={16} />
             <span>Event Logs</span>
           </a>
+          <Link
+            href="/api-test"
+            className="flex items-center space-x-3 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+          >
+            <Brain size={16} />
+            <span>Gemini AI Test</span>
+          </Link>
           <a
             href="#"
             className="flex items-center space-x-3 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
@@ -96,7 +103,7 @@ export default function Sidebar({ isConnected, stats }: SidebarProps) {
             <span>Settings</span>
           </a>
           <a
-            href="https://74576669-75ff-4e28-b014-73eeb594e1ff-00-2film2l5vq4zx.picard.replit.dev:3001/api/docs"
+            href="http://localhost:3001/api/docs"
             target="_blank"
             className="flex items-center space-x-3 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
           >

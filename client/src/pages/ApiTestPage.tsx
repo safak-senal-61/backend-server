@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Play, Brain, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 
 interface TestResult {
@@ -59,7 +58,6 @@ export default function ApiTestPage() {
     onSuccess: (data) => {
       setLastResults(data.results);
       setIsRunning(false);
-      // Refresh other data
       queryClient.invalidateQueries({ queryKey: ['/api/test/results'] });
       queryClient.invalidateQueries({ queryKey: ['/api/logs'] });
     },
@@ -72,7 +70,7 @@ export default function ApiTestPage() {
   const { data: testHistory } = useQuery({
     queryKey: ['/api/test/results'],
     refetchInterval: 5000,
-  });
+  }) as { data: { recentTests?: any[] } | undefined };
 
   const runTests = () => {
     runTestsMutation.mutate();
@@ -97,187 +95,183 @@ export default function ApiTestPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Gemini AI API Testleri</h1>
-          <p className="text-muted-foreground mt-2">
-            Yapay zeka destekli akıllı API test sistemi
-          </p>
-        </div>
-        
-        <Button 
-          onClick={runTests} 
-          disabled={isRunning}
-          size="lg"
-          className="gap-2"
-        >
-          {isRunning ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Test Çalışıyor...
-            </>
-          ) : (
-            <>
-              <Brain className="h-4 w-4" />
-              AI Test Başlat
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Test Özeti */}
-      {lastResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="h-5 w-5" />
-              Son Test Sonuçları
-            </CardTitle>
-            <CardDescription>
-              Gemini AI tarafından gerçekleştirilen test sonuçları
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {lastResults.length}
-                </div>
-                <div className="text-sm text-muted-foreground">Toplam Test</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {lastResults.filter(r => r.success).length}
-                </div>
-                <div className="text-sm text-muted-foreground">Başarılı</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">
-                  {lastResults.filter(r => !r.success).length}
-                </div>
-                <div className="text-sm text-muted-foreground">Başarısız</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Hata Mesajı */}
-      {runTestsMutation.error && (
-        <Alert variant="destructive">
-          <XCircle className="h-4 w-4" />
-          <AlertDescription>
-            Test Hatası: {runTestsMutation.error.message}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Test Sonuçları Detayları */}
-      {lastResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Test Detayları</CardTitle>
-            <CardDescription>
-              Her bir API endpoint'inin test sonuçları
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {lastResults.map((result, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(result.success)}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getMethodBadgeColor(result.method)}>
-                          {result.method}
-                        </Badge>
-                        <span className="font-mono text-sm">{result.endpoint}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Deneme: {result.attempt} | {new Date(result.timestamp).toLocaleTimeString('tr-TR')}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    {result.success ? (
-                      <Badge variant="outline" className="text-green-600">
-                        Başarılı
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive">
-                        Başarısız
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Test Geçmişi */}
-      {testHistory?.recentTests && testHistory.recentTests.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Test Geçmişi
-            </CardTitle>
-            <CardDescription>
-              Önceki test çalışmalarının özeti
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {testHistory.recentTests.slice(0, 5).map((log: any, index: number) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <div className="font-medium">{log.message}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(log.timestamp).toLocaleDateString('tr-TR')} {' '}
-                      {new Date(log.timestamp).toLocaleTimeString('tr-TR')}
-                    </div>
-                  </div>
-                  <Badge variant="outline">
-                    {log.level}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Sistem Bilgisi */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Sistem Bilgisi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">AI Motoru:</span> Gemini 1.5 Flash
-            </div>
-            <div>
-              <span className="font-medium">Test URL:</span> http://localhost:5000
-            </div>
-            <div>
-              <span className="font-medium">Admin Secret:</span> 
-              {process.env.ADMIN_REGISTRATION_SECRET ? ' ✅ Ayarlandı' : ' ❌ Ayarlanmadı'}
-            </div>
-            <div>
-              <span className="font-medium">Otomatik Retry:</span> ✅ Aktif (Max 3 deneme)
-            </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Gemini AI API Testleri</h1>
+            <p className="text-gray-600 mt-2">
+              Yapay zeka destekli akıllı API test sistemi
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          
+          <Button 
+            onClick={runTests} 
+            disabled={isRunning}
+            size="lg"
+            className="gap-2"
+          >
+            {isRunning ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Test Çalışıyor...
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4" />
+                AI Test Başlat
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Test Özeti */}
+        {lastResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Play className="h-5 w-5" />
+                Son Test Sonuçları
+              </CardTitle>
+              <CardDescription>
+                Gemini AI tarafından gerçekleştirilen test sonuçları
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {lastResults.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Toplam Test</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {lastResults.filter(r => r.success).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Başarılı</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">
+                    {lastResults.filter(r => !r.success).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Başarısız</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Hata Mesajı */}
+        {runTestsMutation.error && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              Test Hatası: {runTestsMutation.error.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Test Sonuçları Detayları */}
+        {lastResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Detayları</CardTitle>
+              <CardDescription>
+                Her bir API endpoint'inin test sonuçları
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {lastResults.map((result, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-4 border rounded-lg bg-white"
+                  >
+                    <div className="flex items-center gap-3">
+                      {getStatusIcon(result.success)}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getMethodBadgeColor(result.method)}`}>
+                            {result.method}
+                          </span>
+                          <span className="font-mono text-sm">{result.endpoint}</span>
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          Deneme: {result.attempt} | {new Date(result.timestamp).toLocaleTimeString('tr-TR')}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      {result.success ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600">
+                          Başarılı
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">
+                          Başarısız
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Test başlamamış ise yönlendirme */}
+        {lastResults.length === 0 && !isRunning && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Test Sistemi Hazır
+              </CardTitle>
+              <CardDescription>
+                Gemini AI ile akıllı API testleri yapmak için yukarıdaki butona tıklayın
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-6">
+                <div className="text-lg font-medium text-gray-700 mb-2">
+                  Test edilecek API'ler:
+                </div>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div>• Register API (Kullanıcı kaydı)</div>
+                  <div>• Login API (Giriş)</div>
+                  <div>• Profile API (Korumalı endpoint)</div>
+                  <div>• Admin API (Admin endpoint)</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sistem Bilgisi */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Sistem Bilgisi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">AI Motoru:</span> Gemini 1.5 Flash
+              </div>
+              <div>
+                <span className="font-medium">Test URL:</span> http://localhost:5000
+              </div>
+              <div>
+                <span className="font-medium">Admin Secret:</span> ✅ Ayarlandı
+              </div>
+              <div>
+                <span className="font-medium">Otomatik Retry:</span> ✅ Aktif (Max 3 deneme)
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

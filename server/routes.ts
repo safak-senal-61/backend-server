@@ -441,6 +441,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API Testing with Gemini AI
+  app.post("/api/test/run-ai-tests", async (req: Request, res: Response) => {
+    try {
+      console.log(`🚀 Gemini AI API Test başlatılıyor...`);
+      
+      const { IntelligentApiTester } = await import('./services/api-tester');
+      const tester = new IntelligentApiTester('http://localhost:5000', process.env.ADMIN_REGISTRATION_SECRET || '');
+      
+      // Run complete API test suite
+      await tester.runCompleteApiTest();
+      
+      const results = tester.getTestResults();
+      
+      // Log to event system
+      await storage.createEventLog({
+        level: "INFO",
+        message: `AI API Tests completed: ${results.filter((r: any) => r.success).length}/${results.length} tests passed`,
+        metadata: JSON.stringify(results)
+      });
+      
+      res.json({
+        success: true,
+        message: "AI API tests completed",
+        results: results,
+        summary: {
+          total: results.length,
+          passed: results.filter((r: any) => r.success).length,
+          failed: results.filter((r: any) => !r.success).length
+        }
+      });
+      
+    } catch (error) {
+      console.error('AI API Test hatası:', error);
+      
+      await storage.createEventLog({
+        level: "ERROR",
+        message: `AI API Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get AI Test Results
+  app.get("/api/test/results", async (req: Request, res: Response) => {
+    try {
+      const logs = await storage.getEventLogs(50, 'INFO');
+      const testLogs = logs.filter(log => log.message.includes('AI API Tests') || log.message.includes('API Test'));
+      
+      res.json({
+        recentTests: testLogs,
+        totalTests: testLogs.length
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch test results" });
+    }
+  });
+
   // Helper Functions for Video Chat
   function broadcastToVideoRoom(roomId: string, message: any) {
     const room = videoRooms.get(roomId);

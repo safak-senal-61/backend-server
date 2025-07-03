@@ -1,4 +1,5 @@
-import { Radio, Users, List, Settings, Activity, Book } from "lucide-react";
+import { Radio, Users, List, Settings, Activity, Book, Brain } from "lucide-react";
+import { Link } from "wouter";
 
 interface SidebarProps {
   isConnected: boolean;

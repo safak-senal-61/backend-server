@@ -1,9 +1,9 @@
-import { mysqlTable, text, int, boolean, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { pgTable, text, integer, boolean, timestamp, varchar, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = mysqlTable("users", {
-  id: int("id").primaryKey().autoincrement(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   username: varchar("username", { length: 100 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
@@ -21,55 +21,55 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const connections = mysqlTable("connections", {
-  id: int("id").primaryKey().autoincrement(),
+export const connections = pgTable("connections", {
+  id: serial("id").primaryKey(),
   clientId: text("client_id").notNull().unique(),
   ipAddress: text("ip_address").notNull(),
   connectedAt: timestamp("connected_at").defaultNow().notNull(),
   lastPing: timestamp("last_ping").defaultNow().notNull(),
-  messageCount: int("message_count").default(0).notNull(),
+  messageCount: integer("message_count").default(0).notNull(),
   status: text("status").notNull().default("connected"), // connected, reconnecting, disconnected
 });
 
-export const messages = mysqlTable("messages", {
-  id: int("id").primaryKey().autoincrement(),
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
   type: text("type").notNull(), // notification, update, alert, system
   content: text("content").notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
-  recipientCount: int("recipient_count").default(0).notNull(),
+  recipientCount: integer("recipient_count").default(0).notNull(),
 });
 
-export const eventLogs = mysqlTable("event_logs", {
-  id: int("id").primaryKey().autoincrement(),
+export const eventLogs = pgTable("event_logs", {
+  id: serial("id").primaryKey(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   level: text("level").notNull(), // INFO, CONN, MSG, WARN, ERROR
   message: text("message").notNull(),
   metadata: text("metadata"), // JSON string for additional data
 });
 
-export const videoRooms = mysqlTable("video_rooms", {
-  id: int("id").primaryKey().autoincrement(),
+export const videoRooms = pgTable("video_rooms", {
+  id: serial("id").primaryKey(),
   roomId: text("room_id").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
-  hostId: int("host_id").notNull(),
+  hostId: integer("host_id").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
-  maxParticipants: int("max_participants").default(10).notNull(),
+  maxParticipants: integer("max_participants").default(10).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   endedAt: timestamp("ended_at"),
 });
 
-export const videoParticipants = mysqlTable("video_participants", {
-  id: int("id").primaryKey().autoincrement(),
+export const videoParticipants = pgTable("video_participants", {
+  id: serial("id").primaryKey(),
   roomId: text("room_id").notNull(),
-  userId: int("user_id").notNull(),
+  userId: integer("user_id").notNull(),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
   leftAt: timestamp("left_at"),
   isActive: boolean("is_active").default(true).notNull(),
 });
 
-export const serverSettings = mysqlTable("server_settings", {
-  id: int("id").primaryKey().autoincrement(),
+export const serverSettings = pgTable("server_settings", {
+  id: serial("id").primaryKey(),
   key: text("key").notNull().unique(),
   value: text("value").notNull(),
   description: text("description"),
@@ -135,9 +135,9 @@ export const insertServerSettingSchema = createInsertSchema(serverSettings).pick
   description: true,
 });
 
-export const refreshTokens = mysqlTable("refresh_tokens", {
-  id: int("id").primaryKey().autoincrement(),
-  userId: int("user_id").notNull(),
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -455,10 +455,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Initialize server with some startup logs
-  storage.createEventLog({
-    level: "INFO",
-    message: "Advanced WebSocket server started successfully"
-  });
+  // TODO: Re-enable after database connection is fixed
+  // storage.createEventLog({
+  //   level: "INFO",
+  //   message: "Advanced WebSocket server started successfully"
+  // });
 
   const httpServer = createServer(app);
   

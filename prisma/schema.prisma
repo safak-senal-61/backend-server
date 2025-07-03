@@ -1,0 +1,539 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUM TANIMLAMALARI
+
+enum UserRole {
+  USER  // Standart kullanıcı
+  ADMIN // Yönetici
+  WIP   // Work-In-Progress / Özel rol
+}
+
+enum UserGender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_SAY
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum UserAccountStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+}
+
+enum ChatRoomType {
+  PUBLIC
+  PRIVATE
+  VOICE_ONLY
+}
+
+enum ChatRoomStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  GIFT
+  SYSTEM
+}
+
+enum TransactionType {
+  COIN_PURCHASE
+  GIFT_SEND
+  DIAMOND_CONVERSION
+  STREAM_REWARD
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum FollowRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum GameSessionStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED_ACCEPTED
+  REVIEWED_REJECTED
+  RESOLVED
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  MESSAGE_RECEIVED
+  GIFT_RECEIVED
+  SYSTEM_ANNOUNCEMENT
+  FRIEND_REQUEST_RECEIVED
+  FRIEND_REQUEST_ACCEPTED
+  REPORT_UPDATE
+}
+
+enum StreamStatus {
+  LIVE
+  OFFLINE
+  SCHEDULED
+  ENDED
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  authProvider            String?
+  authId                  String?   @unique
+  username                String    @unique
+  nickname                String?
+  profilePictureUrl       String?
+  bio                     String?
+  gender                  UserGender?
+  birthDate               DateTime?
+  country                 String?
+  region                  String?
+  level                   Int       @default(1)
+  vipLevel                Int       @default(0)
+  coins                   BigInt    @default(0)
+  diamonds                BigInt    @default(0)
+  email                   String    @unique
+  password                String?
+  passwordChangedAt       DateTime?
+  isEmailVerified         Boolean   @default(false)
+  lastLoginAt             DateTime?
+  followingCount          Int       @default(0)
+  followerCount           Int       @default(0)
+  status                  UserStatus    @default(ACTIVE)
+  isOnline                Boolean   @default(false)
+  preferences             Json?
+  allowDirectMessages     Boolean   @default(true)
+  notificationSettings    Json?
+  blockedUserIds          Json?
+  accountStatus           UserAccountStatus    @default(ACTIVE)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  role                    UserRole  @default(USER)
+  isPrivate               Boolean   @default(false)
+  pinnedMessagesInRooms   Json?
+  twoFactorEnabled        Boolean   @default(false)
+  twoFactorSecret         String?
+  twoFactorRecoveryCodes  Json?
+  emailVerificationToken       String?   @unique
+  emailVerificationExpiresAt DateTime?
+  passwordResetToken           String?   @unique
+  passwordResetExpiresAt       DateTime?
+  postCount               Int       @default(0)
+
+  // Relations
+  invitedUsers User[] @relation("Invitations")
+  invitedBy   User? @relation("Invitations", fields: [invitedByForeignKey], references: [id])
+  invitedByForeignKey String? @map("invitedById")
+
+  trustedDevices TrustedDevice[]
+  refreshTokens RefreshToken[]
+  oneSignalPlayers OneSignalPlayer[]
+  transactions            Transaction[]
+  sentMessages            Message[]     @relation("SentMessages")
+  receivedMessages        Message[]     @relation("ReceivedMessages")
+  reportsMade             Report[]      @relation("Reporter")
+  reportsReceived         Report[]      @relation("ReportedUser")
+  reviewedReports         Report[]      @relation("ReviewedReports")
+  hostedGameSessions      GameSession[] @relation("Host")
+  streams                 Stream[]       @relation("Broadcaster")
+  ownedChatRooms          ChatRoom[]     @relation("Owner")
+  sentFollowRequests     FollowRequest[] @relation("SentFollowRequests")
+  receivedFollowRequests FollowRequest[] @relation("ReceivedFollowRequests")
+  followedBy              Follow[]      @relation("FollowingRelation")
+  following               Follow[]      @relation("FollowerRelation")
+  likedGames              GameLike[]
+  gameRatings             GameRating[]
+  notifications           Notification[] @relation("Recipient")
+  sentNotifications       Notification[] @relation("Sender")
+
+  @@index([username])
+}
+
+model ChatRoom {
+  id                        String    @id @default(cuid())
+  ownerId                   String
+  owner                     User      @relation("Owner", fields: [ownerId], references: [id])
+  title                     String
+  description               String?
+  coverImageUrl             String?
+  type                      ChatRoomType
+  passwordHash              String?
+  maxParticipants           Int
+  currentParticipantCount   Int       @default(0)
+  activeParticipants        Json?
+  moderators                Json?
+  speakerSeatCount          Int       @default(0)
+  speakerSeatAssignments    Json?
+  rtcChannelName            String?
+  tags                      Json?
+  status                    ChatRoomStatus    @default(ACTIVE)
+  pinnedMessageIds          Json? @default("[]")
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  messages                  Message[]
+  reports                   Report[]  @relation("ReportedRoom")
+
+  @@index([ownerId])
+}
+
+model Message {
+  id                String    @id @default(cuid())
+  conversationId    String
+  senderId          String
+  sender            User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId        String?
+  receiver          User?     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  roomId            String?
+  room              ChatRoom? @relation(fields: [roomId], references: [id])
+  messageType       MessageType
+  content           String?   @db.Text
+  giftId            String?
+  gift              Gift?     @relation(fields: [giftId], references: [id])
+  readStatus        Json?
+  isDeletedFor      Json?
+  isPinned          Boolean   @default(false)
+  reactions         Json?     @default("{}")
+  createdAt         DateTime  @default(now())
+
+  repliedToMessageId String?
+  repliedToMessage  Message?  @relation("Replies", fields: [repliedToMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replies           Message[] @relation("Replies")
+
+  reports           Report[]  @relation("ReportedMessage")
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([roomId])
+  @@index([conversationId])
+  @@index([repliedToMessageId])
+}
+
+model Transaction {
+  id                      String    @id @default(cuid())
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id])
+  transactionType         TransactionType
+  amount                  Decimal   @db.Decimal(10, 2)
+  currency                String
+  relatedEntityId         String?
+  relatedEntityType       String?
+  description             String?   @db.Text
+  platform                String?
+  platformTransactionId   String?   @unique
+  status                  TransactionStatus @default(PENDING)
+  paymentGatewayToken     String?  @unique
+  createdAt               DateTime  @default(now())
+
+  @@index([userId])
+  @@index([transactionType])
+  @@index([status])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model FollowRequest {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("SentFollowRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User     @relation("ReceivedFollowRequests", fields: [recipientId], references: [id], onDelete: Cascade)
+  status      FollowRequestStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, recipientId])
+  @@index([requesterId])
+  @@index([recipientId])
+  @@index([status])
+}
+
+model Game {
+  id                String    @id @default(cuid())
+  gameId            String    @unique
+  name              String
+  description       String?   @db.Text
+  iconUrl           String?
+  entryCost         BigInt    @default(0)
+  rewardStructure   Json?
+  isActive          Boolean   @default(true)
+  developer         String?
+  publisher         String?
+  releaseDate       DateTime?
+  platformCompat    Json?
+  likeCount         Int       @default(0)
+  playCount         Int       @default(0)
+  averageRating     Float     @default(0)
+  ratingCount       Int       @default(0)
+  createdAt         DateTime  @default(now())
+
+  categoryId        String?
+  category          GameCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  gameGenreTags     GameGenreTag[]
+  gameSessions      GameSession[]
+  likes             GameLike[]
+  ratings           GameRating[]
+
+  @@index([categoryId])
+  @@index([name])
+}
+
+model GenreTag {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  slug          String   @unique
+  createdAt     DateTime @default(now())
+
+  gameGenreTags GameGenreTag[]
+}
+
+model GameGenreTag {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  genreTagId  String
+  genreTag    GenreTag @relation(fields: [genreTagId], references: [id], onDelete: Cascade)
+  assignedAt  DateTime @default(now())
+
+  @@unique([gameId, genreTagId])
+  @@index([gameId])
+  @@index([genreTagId])
+}
+
+model GameLike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, gameId])
+  @@index([userId])
+  @@index([gameId])
+}
+
+model GameRating {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, gameId])
+  @@index([userId])
+  @@index([gameId])
+  @@index([rating])
+}
+
+model GameCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  iconUrl   String?
+  createdAt DateTime @default(now())
+
+  games     Game[]
+}
+
+model GameSession {
+  id                String    @id @default(cuid())
+  gameId            String
+  game              Game      @relation(fields: [gameId], references: [id])
+  hostId            String
+  host              User      @relation("Host", fields: [hostId], references: [id])
+  participants      Json?
+  viewerIds         Json?
+  maxPlayers        Int
+  currentPlayers    Int       @default(0)
+  startTime         DateTime?
+  endTime           DateTime?
+  status            GameSessionStatus @default(WAITING)
+  createdAt         DateTime  @default(now())
+
+  @@index([gameId])
+  @@index([hostId])
+  @@index([status])
+}
+
+model Gift {
+  id             String    @id @default(cuid())
+  giftId         String    @unique
+  name           String
+  description    String?   @db.Text
+  imageUrl       String
+  animationUrl   String?
+  cost           BigInt
+  value          BigInt
+  category       String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  messages       Message[]
+}
+
+model Report {
+  id                  String    @id @default(cuid())
+  reporterId          String
+  reporter            User      @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUserId      String?
+  reportedUser        User?     @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  reportedStreamId    String?
+  reportedStream      Stream?   @relation(fields: [reportedStreamId], references: [id])
+  reportedRoomId      String?
+  reportedRoom        ChatRoom? @relation("ReportedRoom", fields: [reportedRoomId], references: [id])
+  reportedMessageId   String?
+  reportedMessage     Message?  @relation("ReportedMessage", fields: [reportedMessageId], references: [id])
+  reason              String
+  description         String?   @db.Text
+  status              ReportStatus @default(PENDING)
+  reviewedById        String?
+  reviewer            User?     @relation("ReviewedReports", fields: [reviewedById], references: [id])
+  reviewTimestamp     DateTime?
+  createdAt           DateTime  @default(now())
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([reportedStreamId])
+  @@index([reportedRoomId])
+  @@index([reportedMessageId])
+  @@index([status])
+}
+
+model Notification {
+  id                  String    @id @default(cuid())
+  recipientId         String
+  recipient           User      @relation("Recipient", fields: [recipientId], references: [id])
+  senderId            String?
+  sender              User?     @relation("Sender", fields: [senderId], references: [id])
+  type                NotificationType
+  relatedEntityId     String?
+  relatedEntityType   String?
+  content             String?   @db.Text
+  isRead              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+
+  @@index([recipientId])
+  @@index([type])
+  @@index([isRead])
+}
+
+model Stream {
+  id                      String    @id @default(cuid())
+  broadcasterId           String
+  broadcaster             User      @relation("Broadcaster", fields: [broadcasterId], references: [id])
+  title                   String?
+  coverImageUrl           String?
+  status                  StreamStatus @default(OFFLINE)
+  startTime               DateTime?
+  endTime                 DateTime?
+  currentViewers          Int       @default(0)
+  peakViewers             Int       @default(0)
+  totalDiamondsReceived   BigInt    @default(0)
+  tags                    Json?
+  location                Json?
+  rtcChannelName          String?
+  recordingUrl            String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  reports                 Report[]
+
+  @@index([broadcasterId])
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  revokedAt DateTime?
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.VarChar(255)
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model OneSignalPlayer {
+  id          String   @id @default(cuid())
+  playerId    String   @unique
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo  String?
+  lastSeen    DateTime @default(now()) @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model TrustedDevice {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName      String
+  deviceType      String?
+  ipAddress       String?
+  userAgent       String?
+  location        String?
+  isCurrentDevice Boolean  @default(false)
+  lastUsedAt      DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+}

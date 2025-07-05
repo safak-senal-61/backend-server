@@ -148,7 +148,7 @@ export default function ApiTestPage() {
         actualRequestData = {
           ...test.requestData,
           headers: {
-            ...test.requestData.headers,
+            ...(test.requestData as any).headers,
             'Authorization': `Bearer ${authToken.substring(0, 50)}...`
           }
         };

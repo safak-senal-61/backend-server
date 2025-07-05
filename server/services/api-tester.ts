@@ -160,18 +160,25 @@ export class IntelligentApiTester {
     console.log(`Base URL: ${this.baseUrl}`);
     console.log(`Admin Secret: ${this.adminSecret ? '✅ Var' : '❌ Yok'}`);
 
+    // Generate random test data
+    const randomId = Math.floor(Math.random() * 10000);
+    const timestamp = Date.now();
+    const testUserData = {
+      username: `testuser_${randomId}`,
+      email: `test_${timestamp}@example.com`,
+      password: 'TestPassword123!',
+      firstName: 'Test',
+      lastName: 'User'
+    };
+
+    console.log(`🎲 Rastgele test verileri oluşturuldu:`, testUserData);
+
     // 1. Register Test
     console.log(`\n📝 1. Register API Test`);
     const registerResult = await this.testApiWithRetry({
       endpoint: '/api/auth/register',
       method: 'POST',
-      body: {
-        username: 'testuser123',
-        email: 'test@example.com',
-        password: 'TestPassword123!',
-        firstName: 'Test',
-        lastName: 'User'
-      },
+      body: testUserData,
       requiresAuth: false,
       requiresAdminSecret: false
     });
@@ -182,12 +189,20 @@ export class IntelligentApiTester {
       endpoint: '/api/auth/login',
       method: 'POST',
       body: {
-        email: 'test@example.com',
-        password: 'TestPassword123!'
+        email: testUserData.email,
+        password: testUserData.password
       },
       requiresAuth: false,
       requiresAdminSecret: false
     });
+
+    // Extract token from login result
+    if (loginResult.success && loginResult.data?.accessToken) {
+      this.accessToken = loginResult.data.accessToken;
+      console.log(`🔑 Login başarılı, access token alındı`);
+    } else {
+      console.log(`⚠️  Login başarısız, token alınamadı`);
+    }
 
     // 3. Protected Route Test
     console.log(`\n🛡️  3. Protected Route Test`);

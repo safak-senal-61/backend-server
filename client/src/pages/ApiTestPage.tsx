@@ -605,8 +605,16 @@ export default function ApiTestPage() {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-4">
+            {/* Debug bilgisi - geçici */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
+                Debug: lastResults.length = {lastResults.length}, 
+                Data: {JSON.stringify(lastResults.slice(0, 1), null, 2)}
+              </div>
+            )}
+            
             {/* Test Sonuçları Detayları */}
-            {lastResults.length > 0 ? (
+            {lastResults && lastResults.length > 0 ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Test Detayları</CardTitle>
@@ -616,126 +624,131 @@ export default function ApiTestPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {lastResults.map((result, index) => (
-                      <div 
-                        key={index} 
-                        className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden"
-                      >
-                        {/* Header */}
-                        <div className="p-4 border-b bg-gray-50 dark:bg-gray-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {getStatusIcon(result.success)}
+                    {lastResults.map((result, index) => {
+                      // Güvenli veri kontrolü
+                      if (!result) return null;
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden"
+                        >
+                          {/* Header */}
+                          <div className="p-4 border-b bg-gray-50 dark:bg-gray-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {getStatusIcon(result.success)}
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${getMethodBadgeColor(result.method)}`}>
+                                    {result.method}
+                                  </span>
+                                  <span className="font-mono text-sm font-medium">{result.endpoint}</span>
+                                </div>
+                              </div>
+                              
                               <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${getMethodBadgeColor(result.method)}`}>
-                                  {result.method}
-                                </span>
-                                <span className="font-mono text-sm font-medium">{result.endpoint}</span>
+                                {result.success ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-600">
+                                    ✅ Başarılı
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive">
+                                    ❌ Başarısız
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                              {result.success ? (
-                                <Badge variant="outline" className="text-green-600 border-green-600">
-                                  ✅ Başarılı
-                                </Badge>
-                              ) : (
-                                <Badge variant="destructive">
-                                  ❌ Başarısız
-                                </Badge>
+                            {/* Test Metadata */}
+                            <div className="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                              <span>Deneme: {result.attempt}</span>
+                              <span>•</span>
+                              <span>{new Date(result.timestamp).toLocaleTimeString('tr-TR')}</span>
+                              {result.responseTime && (
+                                <>
+                                  <span>•</span>
+                                  <span>Yanıt süresi: {result.responseTime}ms</span>
+                                </>
+                              )}
+                              {result.statusCode && (
+                                <>
+                                  <span>•</span>
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    result.statusCode >= 200 && result.statusCode < 300 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    HTTP {result.statusCode}
+                                  </span>
+                                </>
                               )}
                             </div>
                           </div>
-                          
-                          {/* Test Metadata */}
-                          <div className="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span>Deneme: {result.attempt}</span>
-                            <span>•</span>
-                            <span>{new Date(result.timestamp).toLocaleTimeString('tr-TR')}</span>
-                            {result.responseTime && (
-                              <>
-                                <span>•</span>
-                                <span>Yanıt süresi: {result.responseTime}ms</span>
-                              </>
+
+                          {/* Request/Response Details */}
+                          <div className="p-4 space-y-4">
+                            {/* Request Data */}
+                            {result.data?.requestData && (
+                              <div>
+                                <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                  📤 İstek Verileri
+                                </h4>
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3">
+                                  <pre className="text-xs overflow-x-auto text-blue-800 dark:text-blue-200">
+                                    {JSON.stringify(result.data.requestData, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
                             )}
-                            {result.statusCode && (
-                              <>
-                                <span>•</span>
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  result.statusCode >= 200 && result.statusCode < 300 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  HTTP {result.statusCode}
-                                </span>
-                              </>
+                            
+                            {/* Response Data */}
+                            {result.success && result.data?.responseData && (
+                              <div>
+                                <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                  📥 Yanıt Verileri
+                                </h4>
+                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-3">
+                                  <pre className="text-xs overflow-x-auto text-green-800 dark:text-green-200">
+                                    {JSON.stringify(result.data.responseData, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Error Details */}
+                            {!result.success && result.error && (
+                              <div>
+                                <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                  ❌ Hata Detayları
+                                </h4>
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
+                                  <div className="space-y-2">
+                                    <div className="text-sm">
+                                      <span className="font-medium text-red-800 dark:text-red-200">Hata:</span>
+                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.error}</span>
+                                    </div>
+                                    
+                                    {result.data?.message && (
+                                      <div className="text-sm">
+                                        <span className="font-medium text-red-800 dark:text-red-200">Mesaj:</span>
+                                        <span className="ml-2 text-red-700 dark:text-red-300">{result.data.message}</span>
+                                      </div>
+                                    )}
+                                    
+                                    {result.data?.suggestion && (
+                                      <div className="text-sm border-t border-red-200 dark:border-red-700 pt-2 mt-2">
+                                        <span className="font-medium text-red-800 dark:text-red-200">💡 Öneri:</span>
+                                        <span className="ml-2 text-red-700 dark:text-red-300">{result.data.suggestion}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
-
-                        {/* Request/Response Details */}
-                        <div className="p-4 space-y-4">
-                          {/* Request Data */}
-                          {result.data?.requestData && (
-                            <div>
-                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                📤 İstek Verileri
-                              </h4>
-                              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3">
-                                <pre className="text-xs overflow-x-auto text-blue-800 dark:text-blue-200">
-                                  {JSON.stringify(result.data.requestData, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Response Data */}
-                          {result.success && result.data?.responseData && (
-                            <div>
-                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                📥 Yanıt Verileri
-                              </h4>
-                              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-3">
-                                <pre className="text-xs overflow-x-auto text-green-800 dark:text-green-200">
-                                  {JSON.stringify(result.data.responseData, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Error Details */}
-                          {!result.success && result.error && (
-                            <div>
-                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                ❌ Hata Detayları
-                              </h4>
-                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-                                <div className="space-y-2">
-                                  <div className="text-sm">
-                                    <span className="font-medium text-red-800 dark:text-red-200">Hata:</span>
-                                    <span className="ml-2 text-red-700 dark:text-red-300">{result.error}</span>
-                                  </div>
-                                  
-                                  {result.data?.message && (
-                                    <div className="text-sm">
-                                      <span className="font-medium text-red-800 dark:text-red-200">Mesaj:</span>
-                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.data.message}</span>
-                                    </div>
-                                  )}
-                                  
-                                  {result.data?.suggestion && (
-                                    <div className="text-sm border-t border-red-200 dark:border-red-700 pt-2 mt-2">
-                                      <span className="font-medium text-red-800 dark:text-red-200">💡 Öneri:</span>
-                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.data.suggestion}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

@@ -75,13 +75,51 @@ export default function ApiTestPage() {
     setLogs(prev => [...prev, newLog]);
   };
 
-  // Simulate real-time test progress
+  // Simulate real-time test progress with detailed request/response data
   const simulateTestProgress = async () => {
     const tests = [
-      { name: 'POST /api/auth/register', endpoint: '/api/auth/register', method: 'POST' },
-      { name: 'POST /api/auth/login', endpoint: '/api/auth/login', method: 'POST' },
-      { name: 'GET /api/auth/profile', endpoint: '/api/auth/profile', method: 'GET' },
-      { name: 'GET /api/admin/dashboard', endpoint: '/api/admin/dashboard', method: 'GET' }
+      { 
+        name: 'POST /api/auth/register', 
+        endpoint: '/api/auth/register', 
+        method: 'POST',
+        requestData: {
+          username: 'testuser123',
+          email: 'test@example.com',
+          password: 'SecurePass123!',
+          firstName: 'Test',
+          lastName: 'User'
+        }
+      },
+      { 
+        name: 'POST /api/auth/login', 
+        endpoint: '/api/auth/login', 
+        method: 'POST',
+        requestData: {
+          email: 'test@example.com',
+          password: 'SecurePass123!'
+        }
+      },
+      { 
+        name: 'GET /api/auth/profile', 
+        endpoint: '/api/auth/profile', 
+        method: 'GET',
+        requestData: {
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+          }
+        }
+      },
+      { 
+        name: 'GET /api/admin/dashboard', 
+        endpoint: '/api/admin/dashboard', 
+        method: 'GET',
+        requestData: {
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            'X-Admin-Secret': 'admin-secret-key'
+          }
+        }
+      }
     ];
 
     setProgress({ current: 0, total: tests.length, currentTest: '', phase: 'preparing' });
@@ -92,24 +130,106 @@ export default function ApiTestPage() {
     for (let i = 0; i < tests.length; i++) {
       const test = tests[i];
       setProgress({ current: i + 1, total: tests.length, currentTest: test.name, phase: 'testing' });
-      addLog('info', `Test başlatılıyor: ${test.name}`);
+      
+      // Log request details
+      addLog('info', `📤 İstek gönderiliyor: ${test.name}`, {
+        method: test.method,
+        endpoint: test.endpoint,
+        requestData: test.requestData
+      });
       
       // Simulate test execution with random delay
       await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
       
-      // Simulate random success/failure
-      const success = Math.random() > 0.2; // 80% success rate
+      // Simulate random success/failure with detailed responses
+      const success = Math.random() > 0.3; // 70% success rate
+      const responseTime = Math.floor(Math.random() * 200 + 50);
       
       if (success) {
-        addLog('success', `✅ ${test.name} - Test başarılı`, { 
-          responseTime: Math.floor(Math.random() * 200 + 50),
-          statusCode: 200 
+        let responseData = {};
+        
+        if (test.endpoint.includes('register')) {
+          responseData = {
+            success: true,
+            message: 'User registered successfully',
+            user: {
+              id: 123,
+              username: 'testuser123',
+              email: 'test@example.com',
+              firstName: 'Test',
+              lastName: 'User'
+            }
+          };
+        } else if (test.endpoint.includes('login')) {
+          responseData = {
+            success: true,
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            user: {
+              id: 123,
+              username: 'testuser123',
+              email: 'test@example.com'
+            }
+          };
+        } else if (test.endpoint.includes('profile')) {
+          responseData = {
+            id: 123,
+            username: 'testuser123',
+            email: 'test@example.com',
+            firstName: 'Test',
+            lastName: 'User',
+            role: 'user'
+          };
+        } else if (test.endpoint.includes('admin')) {
+          responseData = {
+            totalUsers: 1250,
+            activeConnections: 45,
+            systemStatus: 'healthy',
+            uptime: '24h 15m'
+          };
+        }
+        
+        addLog('success', `✅ ${test.name} - Test başarılı`, {
+          responseTime: responseTime,
+          statusCode: 200,
+          responseData: responseData
         });
       } else {
-        addLog('error', `❌ ${test.name} - Test başarısız`, { 
-          error: 'Authentication failed or endpoint not accessible',
-          statusCode: 401,
-          suggestion: 'Check API credentials and endpoint availability'
+        let errorData = {};
+        
+        if (test.endpoint.includes('register')) {
+          errorData = {
+            error: 'Email already exists',
+            message: 'Bu email adresi zaten kayıtlı',
+            statusCode: 409,
+            suggestion: 'Farklı bir email adresi deneyin'
+          };
+        } else if (test.endpoint.includes('login')) {
+          errorData = {
+            error: 'Invalid credentials',
+            message: 'Email veya şifre hatalı',
+            statusCode: 401,
+            suggestion: 'Doğru email ve şifre kombinasyonunu kontrol edin'
+          };
+        } else if (test.endpoint.includes('profile')) {
+          errorData = {
+            error: 'Unauthorized',
+            message: 'Token geçersiz veya süresi dolmuş',
+            statusCode: 401,
+            suggestion: 'Login olup yeni token alın'
+          };
+        } else if (test.endpoint.includes('admin')) {
+          errorData = {
+            error: 'Forbidden',
+            message: 'Admin yetkisi gerekli',
+            statusCode: 403,
+            suggestion: 'Admin secret key kontrol edin'
+          };
+        }
+        
+        addLog('error', `❌ ${test.name} - Test başarısız`, {
+          responseTime: responseTime,
+          ...errorData
         });
       }
     }
@@ -149,6 +269,20 @@ export default function ApiTestPage() {
     onSuccess: (data) => {
       setLastResults(data.results || []);
       setIsRunning(false);
+      
+      // Show final summary
+      const successful = data.results?.filter(r => r.success).length || 0;
+      const failed = data.results?.length - successful || 0;
+      
+      addLog('info', `🎯 Test tamamlandı: ${successful} başarılı, ${failed} başarısız`, {
+        summary: {
+          total: data.results?.length || 0,
+          successful,
+          failed,
+          results: data.results
+        }
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['/api/test/results'] });
       queryClient.invalidateQueries({ queryKey: ['/api/logs'] });
     },
@@ -425,10 +559,38 @@ export default function ApiTestPage() {
                               </span>
                             </div>
                             {log.details && (
-                              <div className="text-xs bg-white dark:bg-gray-700 p-2 rounded border">
-                                <pre className="whitespace-pre-wrap">
-                                  {JSON.stringify(log.details, null, 2)}
-                                </pre>
+                              <div className="text-xs bg-white dark:bg-gray-700 p-3 rounded border mt-2">
+                                {log.details.requestData && (
+                                  <div className="mb-3">
+                                    <div className="font-medium text-blue-600 dark:text-blue-400 mb-1">📤 İstek:</div>
+                                    <pre className="whitespace-pre-wrap text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+                                      {JSON.stringify(log.details.requestData, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+                                {log.details.responseData && (
+                                  <div className="mb-3">
+                                    <div className="font-medium text-green-600 dark:text-green-400 mb-1">📥 Yanıt:</div>
+                                    <pre className="whitespace-pre-wrap text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/30 p-2 rounded">
+                                      {JSON.stringify(log.details.responseData, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+                                {log.details.error && (
+                                  <div className="mb-2">
+                                    <div className="font-medium text-red-600 dark:text-red-400 mb-1">❌ Hata:</div>
+                                    <div className="text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/30 p-2 rounded">
+                                      <div><strong>Mesaj:</strong> {log.details.message || log.details.error}</div>
+                                      {log.details.statusCode && <div><strong>HTTP Status:</strong> {log.details.statusCode}</div>}
+                                      {log.details.suggestion && <div className="mt-2"><strong>💡 Öneri:</strong> {log.details.suggestion}</div>}
+                                    </div>
+                                  </div>
+                                )}
+                                {!log.details.requestData && !log.details.responseData && !log.details.error && (
+                                  <pre className="whitespace-pre-wrap">
+                                    {JSON.stringify(log.details, null, 2)}
+                                  </pre>
+                                )}
                               </div>
                             )}
                           </div>
@@ -453,50 +615,124 @@ export default function ApiTestPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {lastResults.map((result, index) => (
                       <div 
                         key={index} 
-                        className="p-4 border rounded-lg bg-white dark:bg-gray-800"
+                        className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            {getStatusIcon(result.success)}
-                            <div className="space-y-2">
+                        {/* Header */}
+                        <div className="p-4 border-b bg-gray-50 dark:bg-gray-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {getStatusIcon(result.success)}
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${getMethodBadgeColor(result.method)}`}>
                                   {result.method}
                                 </span>
-                                <span className="font-mono text-sm">{result.endpoint}</span>
+                                <span className="font-mono text-sm font-medium">{result.endpoint}</span>
                               </div>
-                              <div className="text-sm text-gray-500 space-y-1">
-                                <div>Deneme: {result.attempt} | {new Date(result.timestamp).toLocaleTimeString('tr-TR')}</div>
-                                {result.responseTime && (
-                                  <div>Yanıt süresi: {result.responseTime}ms</div>
-                                )}
-                                {result.statusCode && (
-                                  <div>HTTP Status: {result.statusCode}</div>
-                                )}
-                              </div>
-                              {result.error && (
-                                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                                  <strong>Hata:</strong> {result.error}
-                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {result.success ? (
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  ✅ Başarılı
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">
+                                  ❌ Başarısız
+                                </Badge>
                               )}
                             </div>
                           </div>
                           
-                          <div className="text-right">
-                            {result.success ? (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                Başarılı
-                              </Badge>
-                            ) : (
-                              <Badge variant="destructive">
-                                Başarısız
-                              </Badge>
+                          {/* Test Metadata */}
+                          <div className="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <span>Deneme: {result.attempt}</span>
+                            <span>•</span>
+                            <span>{new Date(result.timestamp).toLocaleTimeString('tr-TR')}</span>
+                            {result.responseTime && (
+                              <>
+                                <span>•</span>
+                                <span>Yanıt süresi: {result.responseTime}ms</span>
+                              </>
+                            )}
+                            {result.statusCode && (
+                              <>
+                                <span>•</span>
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  result.statusCode >= 200 && result.statusCode < 300 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  HTTP {result.statusCode}
+                                </span>
+                              </>
                             )}
                           </div>
+                        </div>
+
+                        {/* Request/Response Details */}
+                        <div className="p-4 space-y-4">
+                          {/* Request Data */}
+                          {result.data?.requestData && (
+                            <div>
+                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                📤 İstek Verileri
+                              </h4>
+                              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3">
+                                <pre className="text-xs overflow-x-auto text-blue-800 dark:text-blue-200">
+                                  {JSON.stringify(result.data.requestData, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Response Data */}
+                          {result.success && result.data?.responseData && (
+                            <div>
+                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                📥 Yanıt Verileri
+                              </h4>
+                              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-3">
+                                <pre className="text-xs overflow-x-auto text-green-800 dark:text-green-200">
+                                  {JSON.stringify(result.data.responseData, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Error Details */}
+                          {!result.success && result.error && (
+                            <div>
+                              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                ❌ Hata Detayları
+                              </h4>
+                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
+                                <div className="space-y-2">
+                                  <div className="text-sm">
+                                    <span className="font-medium text-red-800 dark:text-red-200">Hata:</span>
+                                    <span className="ml-2 text-red-700 dark:text-red-300">{result.error}</span>
+                                  </div>
+                                  
+                                  {result.data?.message && (
+                                    <div className="text-sm">
+                                      <span className="font-medium text-red-800 dark:text-red-200">Mesaj:</span>
+                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.data.message}</span>
+                                    </div>
+                                  )}
+                                  
+                                  {result.data?.suggestion && (
+                                    <div className="text-sm border-t border-red-200 dark:border-red-700 pt-2 mt-2">
+                                      <span className="font-medium text-red-800 dark:text-red-200">💡 Öneri:</span>
+                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.data.suggestion}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

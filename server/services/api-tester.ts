@@ -7,14 +7,15 @@ export class IntelligentApiTester {
   private refreshToken: string | null = null;
   private testResults: any[] = [];
 
-  constructor(baseUrl: string = 'http://localhost:5000', adminSecret: string = '') {
+  constructor(baseUrl: string = 'http://localhost:3001', adminSecret: string = '') {
     this.baseUrl = baseUrl;
     this.adminSecret = adminSecret;
   }
 
   async makeApiCall(request: ApiTestRequest): Promise<ApiTestResult> {
     try {
-      const url = `${this.baseUrl}${request.endpoint}`;
+      // Handle full URLs vs relative endpoints
+      const url = request.endpoint.startsWith('http') ? request.endpoint : `${this.baseUrl}${request.endpoint}`;
       
       // Prepare headers
       const headers: any = {
@@ -226,16 +227,16 @@ export class IntelligentApiTester {
     // 3. Protected Route Test
     console.log(`\n🛡️  3. Protected Route Test`);
     const profileResult = await this.testApiWithRetry({
-      endpoint: '/api/auth/me',
+      endpoint: '/api/auth/profile',
       method: 'GET',
       requiresAuth: true,
       requiresAdminSecret: false
     });
 
-    // 4. Admin Route Test
+    // 4. Admin Route Test (Express server)
     console.log(`\n👑 4. Admin Route Test`);
     const adminResult = await this.testApiWithRetry({
-      endpoint: '/api/admin/dashboard',
+      endpoint: 'http://localhost:5000/api/admin/dashboard',
       method: 'GET',
       requiresAuth: true,
       requiresAdminSecret: true

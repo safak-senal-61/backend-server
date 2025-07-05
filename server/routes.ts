@@ -2,7 +2,6 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { registerAuthRoutes } from "./auth-routes";
 import { insertMessageSchema, insertConnectionSchema, insertVideoRoomSchema, insertVideoParticipantSchema, insertServerSettingSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
@@ -33,8 +32,6 @@ const videoRooms = new Map<string, VideoRoom>();
 const webrtcPeers = new Map<string, WebRTCPeer>();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Register authentication routes first
-  registerAuthRoutes(app);
   
   // Redirect to Swagger docs for API documentation
   app.get("/docs", (req: Request, res: Response) => {

@@ -75,28 +75,39 @@ export default function ApiTestPage() {
     setLogs(prev => [...prev, newLog]);
   };
 
+  // Generate random test data for each test run
+  const generateRandomTestData = () => {
+    const randomId = Math.floor(Math.random() * 10000);
+    const timestamp = Date.now();
+    
+    return {
+      username: `testuser_${randomId}`,
+      email: `test_${timestamp}@example.com`,
+      password: 'SecurePass123!',
+      firstName: 'Test',
+      lastName: 'User'
+    };
+  };
+
   // Simulate real-time test progress with detailed request/response data
   const simulateTestProgress = async () => {
+    const randomData = generateRandomTestData();
+    let authToken = '';
+    
     const tests = [
       { 
         name: 'POST /api/auth/register', 
         endpoint: '/api/auth/register', 
         method: 'POST',
-        requestData: {
-          username: 'testuser123',
-          email: 'test@example.com',
-          password: 'SecurePass123!',
-          firstName: 'Test',
-          lastName: 'User'
-        }
+        requestData: randomData
       },
       { 
         name: 'POST /api/auth/login', 
         endpoint: '/api/auth/login', 
         method: 'POST',
         requestData: {
-          email: 'test@example.com',
-          password: 'SecurePass123!'
+          email: randomData.email,
+          password: randomData.password
         }
       },
       { 
@@ -105,7 +116,7 @@ export default function ApiTestPage() {
         method: 'GET',
         requestData: {
           headers: {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+            'Authorization': 'Bearer [login_token_will_be_used]'
           }
         }
       },
@@ -115,7 +126,7 @@ export default function ApiTestPage() {
         method: 'GET',
         requestData: {
           headers: {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            'Authorization': 'Bearer [login_token_will_be_used]',
             'X-Admin-Secret': 'admin-secret-key'
           }
         }
@@ -131,94 +142,111 @@ export default function ApiTestPage() {
       const test = tests[i];
       setProgress({ current: i + 1, total: tests.length, currentTest: test.name, phase: 'testing' });
       
+      // Update request data with actual token for auth-required endpoints
+      let actualRequestData = { ...test.requestData };
+      if ((test.endpoint.includes('profile') || test.endpoint.includes('admin')) && authToken) {
+        actualRequestData = {
+          ...test.requestData,
+          headers: {
+            ...test.requestData.headers,
+            'Authorization': `Bearer ${authToken.substring(0, 50)}...`
+          }
+        };
+      }
+      
       // Log request details
       addLog('info', `📤 İstek gönderiliyor: ${test.name}`, {
         method: test.method,
         endpoint: test.endpoint,
-        requestData: test.requestData
+        requestData: actualRequestData
       });
       
       // Simulate test execution with random delay
       await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
       
-      // Simulate random success/failure with detailed responses
-      const success = Math.random() > 0.3; // 70% success rate
+      // Simulate realistic success/failure based on test logic
+      let success = true;
+      let responseData = {};
+      let errorData = {};
       const responseTime = Math.floor(Math.random() * 200 + 50);
       
-      if (success) {
-        let responseData = {};
-        
-        if (test.endpoint.includes('register')) {
+      if (test.endpoint.includes('register')) {
+        // Register should usually succeed with new random data
+        success = Math.random() > 0.1; // 90% success rate for register
+        if (success) {
           responseData = {
             success: true,
             message: 'User registered successfully',
             user: {
-              id: 123,
-              username: 'testuser123',
-              email: 'test@example.com',
-              firstName: 'Test',
-              lastName: 'User'
+              id: Math.floor(Math.random() * 1000) + 100,
+              username: randomData.username,
+              email: randomData.email,
+              firstName: randomData.firstName,
+              lastName: randomData.lastName
             }
           };
-        } else if (test.endpoint.includes('login')) {
-          responseData = {
-            success: true,
-            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            user: {
-              id: 123,
-              username: 'testuser123',
-              email: 'test@example.com'
-            }
-          };
-        } else if (test.endpoint.includes('profile')) {
-          responseData = {
-            id: 123,
-            username: 'testuser123',
-            email: 'test@example.com',
-            firstName: 'Test',
-            lastName: 'User',
-            role: 'user'
-          };
-        } else if (test.endpoint.includes('admin')) {
-          responseData = {
-            totalUsers: 1250,
-            activeConnections: 45,
-            systemStatus: 'healthy',
-            uptime: '24h 15m'
+        } else {
+          errorData = {
+            error: 'Registration failed',
+            message: 'Kayıt sırasında hata oluştu',
+            statusCode: 400,
+            suggestion: 'Bilgileri kontrol edin ve tekrar deneyin'
           };
         }
-        
-        addLog('success', `✅ ${test.name} - Test başarılı`, {
-          responseTime: responseTime,
-          statusCode: 200,
-          responseData: responseData
-        });
-      } else {
-        let errorData = {};
-        
-        if (test.endpoint.includes('register')) {
-          errorData = {
-            error: 'Email already exists',
-            message: 'Bu email adresi zaten kayıtlı',
-            statusCode: 409,
-            suggestion: 'Farklı bir email adresi deneyin'
+      } else if (test.endpoint.includes('login')) {
+        // Login success depends on register success
+        success = Math.random() > 0.2; // 80% success rate
+        if (success) {
+          authToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMywiZW1haWwiOiIke3JhbmRvbURhdGEuZW1haWx9IiwidXNlcm5hbWUiOiIke3JhbmRvbURhdGEudXNlcm5hbWV9In0.token_signature_here`;
+          responseData = {
+            success: true,
+            accessToken: authToken,
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh_token_here',
+            user: {
+              id: 123,
+              username: randomData.username,
+              email: randomData.email
+            }
           };
-        } else if (test.endpoint.includes('login')) {
+        } else {
           errorData = {
             error: 'Invalid credentials',
             message: 'Email veya şifre hatalı',
             statusCode: 401,
             suggestion: 'Doğru email ve şifre kombinasyonunu kontrol edin'
           };
-        } else if (test.endpoint.includes('profile')) {
+        }
+      } else if (test.endpoint.includes('profile')) {
+        // Profile success depends on having a valid token from login
+        success = authToken ? Math.random() > 0.2 : false; // 80% if token exists, 0% if no token
+        if (success) {
+          responseData = {
+            id: 123,
+            username: randomData.username,
+            email: randomData.email,
+            firstName: randomData.firstName,
+            lastName: randomData.lastName,
+            role: 'user'
+          };
+        } else {
           errorData = {
             error: 'Unauthorized',
-            message: 'Token geçersiz veya süresi dolmuş',
+            message: authToken ? 'Token geçersiz veya süresi dolmuş' : 'Authentication token eksik',
             statusCode: 401,
-            suggestion: 'Login olup yeni token alın'
+            suggestion: authToken ? 'Token yenileyin' : 'Önce login olun'
           };
-        } else if (test.endpoint.includes('admin')) {
+        }
+      } else if (test.endpoint.includes('admin')) {
+        // Admin endpoint success
+        success = Math.random() > 0.3; // 70% success rate
+        if (success) {
+          responseData = {
+            totalUsers: Math.floor(Math.random() * 1000) + 500,
+            activeConnections: Math.floor(Math.random() * 100) + 10,
+            systemStatus: 'healthy',
+            uptime: `${Math.floor(Math.random() * 48)}h ${Math.floor(Math.random() * 60)}m`
+          };
+        } else {
           errorData = {
             error: 'Forbidden',
             message: 'Admin yetkisi gerekli',
@@ -226,7 +254,15 @@ export default function ApiTestPage() {
             suggestion: 'Admin secret key kontrol edin'
           };
         }
-        
+      }
+      
+      if (success) {
+        addLog('success', `✅ ${test.name} - Test başarılı`, {
+          responseTime: responseTime,
+          statusCode: 200,
+          responseData: responseData
+        });
+      } else {
         addLog('error', `❌ ${test.name} - Test başarısız`, {
           responseTime: responseTime,
           ...errorData

@@ -608,8 +608,12 @@ export default function ApiTestPage() {
             {/* Debug bilgisi - geçici */}
             {process.env.NODE_ENV === 'development' && (
               <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
-                Debug: lastResults.length = {lastResults.length}, 
-                Data: {JSON.stringify(lastResults.slice(0, 1), null, 2)}
+                Debug: lastResults.length = {lastResults.length}
+                {lastResults.length > 0 && (
+                  <pre className="mt-1 text-xs">
+                    {JSON.stringify(lastResults.slice(0, 1), null, 2)}
+                  </pre>
+                )}
               </div>
             )}
             
@@ -725,20 +729,26 @@ export default function ApiTestPage() {
                                   <div className="space-y-2">
                                     <div className="text-sm">
                                       <span className="font-medium text-red-800 dark:text-red-200">Hata:</span>
-                                      <span className="ml-2 text-red-700 dark:text-red-300">{result.error}</span>
+                                      <span className="ml-2 text-red-700 dark:text-red-300">
+                                        {typeof result.error === 'string' ? result.error : JSON.stringify(result.error)}
+                                      </span>
                                     </div>
                                     
                                     {result.data?.message && (
                                       <div className="text-sm">
                                         <span className="font-medium text-red-800 dark:text-red-200">Mesaj:</span>
-                                        <span className="ml-2 text-red-700 dark:text-red-300">{result.data.message}</span>
+                                        <span className="ml-2 text-red-700 dark:text-red-300">
+                                          {typeof result.data.message === 'string' ? result.data.message : JSON.stringify(result.data.message)}
+                                        </span>
                                       </div>
                                     )}
                                     
                                     {result.data?.suggestion && (
                                       <div className="text-sm border-t border-red-200 dark:border-red-700 pt-2 mt-2">
                                         <span className="font-medium text-red-800 dark:text-red-200">💡 Öneri:</span>
-                                        <span className="ml-2 text-red-700 dark:text-red-300">{result.data.suggestion}</span>
+                                        <span className="ml-2 text-red-700 dark:text-red-300">
+                                          {typeof result.data.suggestion === 'string' ? result.data.suggestion : JSON.stringify(result.data.suggestion)}
+                                        </span>
                                       </div>
                                     )}
                                   </div>

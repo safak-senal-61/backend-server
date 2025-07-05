@@ -38,7 +38,26 @@ export class IntelligentApiTester {
         body: request.body ? JSON.stringify(request.body) : undefined
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          data = { error: 'Invalid JSON response', details: String(parseError) };
+        }
+      } else {
+        // Handle HTML or other non-JSON responses
+        const textResponse = await response.text();
+        data = { 
+          error: 'Non-JSON response received', 
+          statusCode: response.status,
+          statusText: response.statusText,
+          contentType: contentType || 'unknown',
+          responsePreview: textResponse.substring(0, 200) + (textResponse.length > 200 ? '...' : '')
+        };
+      }
 
       if (!response.ok) {
         return {
@@ -207,7 +226,7 @@ export class IntelligentApiTester {
     // 3. Protected Route Test
     console.log(`\n🛡️  3. Protected Route Test`);
     const profileResult = await this.testApiWithRetry({
-      endpoint: '/api/auth/profile',
+      endpoint: '/api/auth/me',
       method: 'GET',
       requiresAuth: true,
       requiresAdminSecret: false
